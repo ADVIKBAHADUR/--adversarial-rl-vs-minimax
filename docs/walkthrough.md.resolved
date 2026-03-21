@@ -1,0 +1,82 @@
+# Walkthrough: Adversarial RL vs Minimax Framework
+
+## What Was Built
+
+Complete project framework for comparing Minimax and RL algorithms on Tic Tac Toe and Connect 4.
+
+### 📁 Files Created (20+ files)
+
+| Category | Files | Status |
+|---|---|---|
+| **Docs** | 5 detailed plan files in `docs/` | ✅ Complete |
+| **Games** | [base.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/games/base.py), [tictactoe.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/games/tictactoe.py), [connect4.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/games/connect4.py) | ✅ Fully implemented |
+| **Agents** | [base.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/games/base.py), [default.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/agents/default.py), [human.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/agents/human.py) | ✅ Fully implemented |
+| **Agent stubs** | [minimax.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/agents/minimax.py), [qlearning.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/agents/qlearning.py), [dqn.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/agents/dqn.py) | 🔲 Interface only |
+| **Infrastructure** | [tournament.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/tournament.py), [experiments.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/experiments.py), [train.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/train.py), [play.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/play.py) | ✅ Complete |
+| **Visuals** | [plotting.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/plotting.py), [gui.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/gui.py) | ✅ Complete |
+| **Config** | [config.py](file:///home/advik/AI/--adversarial-rl-vs-minimax/src/adversarial/config.py), [pyproject.toml](file:///home/advik/AI/--adversarial-rl-vs-minimax/pyproject.toml), [README.md](file:///home/advik/AI/--adversarial-rl-vs-minimax/README.md) | ✅ Complete |
+
+### What's Implemented vs What's Stub
+
+**Fully working:**
+- Both game engines (TTT 3×3, C4 6×7) with numpy arrays
+- Default opponent (win/block/centre/random priority rules)
+- Tournament runner with matchups, side-swapping, timing
+- Experiment sweep CLI with parameter grid search
+- Interactive play CLI
+- Pygame GUI (36pt+ fonts, dark theme, paper-ready)
+- Paper-ready matplotlib plotting (14pt+ fonts)
+- All config dataclasses
+
+**Stubs (interface + structure, logic TODO):**
+- `MinimaxAgent._minimax()` and `._alphabeta()` — recursive search
+- `QLearningAgent.train()` — Q-update loop
+- `DQNAgent.train()` — experience replay loop
+
+## Verification Results
+
+### Game Engines
+```
+=== Tic Tac Toe ===
+  0 1 2
+0 · · ·
+1 · · ·
+2 · · ·
+
+After X plays centre:
+  0 1 2
+0 · · ·
+1 · X ·
+2 · · ·
+
+=== Connect 4 ===
+After X drops col 3:
+  0 1 2 3 4 5 6
+0 · · · · · · ·
+...
+5 · · · X · · ·
+```
+
+### Win Detection
+X wins with top row (0,0), (0,1), (0,2) → correctly detected ✅
+
+### Full Game Simulation (50 TTT + 20 C4)
+```
+TTT (50 games): P1=20, P2=1, Draws=29
+C4  (20 games): P1=10, P2=9, Draws=1
+```
+
+P1 advantage shows in TTT (first move advantage). C4 roughly even since DefaultAgent uses random for non-critical moves.
+
+### Package Install
+`pip install -e .` ✅ — installs `adversarial` package with all CLI entry points.
+
+## Next Steps
+
+Implement algorithm internals in this order:
+1. **Minimax (vanilla)** on TTT — straightforward full search
+2. **Minimax (α-β)** on TTT — add pruning, compare node counts
+3. **Minimax (depth-limited)** on C4 — first prove full search infeasible, then add eval fn
+4. **Q-Learning** on TTT — tabular, fast convergence
+5. **Q-Learning** on C4 — larger state space, needs careful tuning
+6. **DQN** on both — neural net approximation

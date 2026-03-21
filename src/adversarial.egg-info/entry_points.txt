@@ -1,0 +1,6 @@
+[console_scripts]
+adv-experiments = adversarial.experiments:main
+adv-gui = adversarial.gui:main
+adv-play = adversarial.play:main
+adv-tournament = adversarial.tournament:main_cli
+adv-train = adversarial.train:main

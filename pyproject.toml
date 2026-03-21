@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adversarial"
+version = "0.1.0"
+description = "Adversarial RL vs Minimax: Comparing game-playing algorithms on Tic Tac Toe and Connect 4"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "torch>=2.0",
+    "matplotlib>=3.7",
+    "pygame>=2.5",
+    "tqdm>=4.65",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "black", "ruff"]
+
+[project.scripts]
+adv-play = "adversarial.play:main"
+adv-train = "adversarial.train:main"
+adv-tournament = "adversarial.tournament:main_cli"
+adv-experiments = "adversarial.experiments:main"
+adv-gui = "adversarial.gui:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

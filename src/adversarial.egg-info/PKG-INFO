@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: adversarial
+Version: 0.1.0
+Summary: Adversarial RL vs Minimax: Comparing game-playing algorithms on Tic Tac Toe and Connect 4
+Requires-Python: >=3.10
+Requires-Dist: numpy>=1.24
+Requires-Dist: torch>=2.0
+Requires-Dist: matplotlib>=3.7
+Requires-Dist: pygame>=2.5
+Requires-Dist: tqdm>=4.65
+Requires-Dist: pandas>=2.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
