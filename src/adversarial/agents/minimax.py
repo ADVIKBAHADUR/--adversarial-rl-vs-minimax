@@ -65,7 +65,25 @@ class MinimaxAgent(Agent):
         - Recursive case: iterate valid actions, recurse, track best score
         """
         self.stats["nodes_visited"] += 1
-        raise NotImplementedError("Minimax search not yet implemented")
+
+        actions = np.where(self._game.get_valid_actions(state))[0]
+        if len(actions) == 0:
+            return 0.0
+
+        best_score = -np.inf if is_maximising else np.inf
+        current_player = 1 if is_maximising else -1
+        for action in actions:
+            new_state, done, winner = self._game.step(state, action, current_player)
+            if done:
+                score = self._terminal_score(winner)
+            else:
+                score = self._minimax(new_state, None, not is_maximising)
+            
+            if is_maximising:
+                best_score = max(best_score, score)
+            else:
+                best_score = min(best_score, score)
+        return best_score
 
     def _alphabeta(self, state: np.ndarray, depth: int | None,
                    alpha: float, beta: float, is_maximising: bool) -> float:

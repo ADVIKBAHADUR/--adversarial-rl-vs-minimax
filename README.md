@@ -9,7 +9,7 @@
 | **Tic Tac Toe engine** | ✅ Done | Configurable n×n board, numpy-based |
 | **Connect 4 engine** | ✅ Done | 6×7 with gravity, configurable |
 | **Default opponent** | ✅ Done | Win/block/centre/random priorities |
-| **Minimax (vanilla)** | 🔲 Stub | Interface ready, search not implemented |
+| **Minimax (vanilla)** | ✅ Done | Interface ready, search not implemented |
 | **Minimax (α-β pruning)** | 🔲 Stub | Interface ready, pruning not implemented |
 | **Q-Learning (tabular)** | 🔲 Stub | Q-table structure ready, training loop not implemented |
 | **DQN** | 🔲 Stub | Network + replay buffer defined, training not implemented |
