@@ -66,12 +66,16 @@ def run_match(game, agent1, agent2, n_games: int = 100,
     results = {"p1_wins": 0, "p2_wins": 0, "draws": 0,
                "total_moves": 0, "p1_times": [], "p2_times": []}
     games_per_side = n_games // 2 if swap_sides else n_games
+    game_count = 0
+    total_games = games_per_side * (2 if swap_sides else 1)
 
     for swapped in ([False, True] if swap_sides else [False]):
         a1, a2 = (agent2, agent1) if swapped else (agent1, agent2)
         for _ in tqdm(range(games_per_side), desc=f"{a1.name} vs {a2.name}",
                       leave=False, disable=not verbose):
             result = play_game(game, a1, a2)
+            game_count += 1
+            print(f"\r    game {game_count}/{total_games}", end="", flush=True)
             w = result["winner"]
             if swapped:
                 w = -w  # Flip perspective back

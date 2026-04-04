@@ -201,16 +201,20 @@ class DQNAgent(Agent):
         loss_fn = nn.MSELoss()
         
         # Determine chunk size: gather enough data to justify a training wave
-        chunk_size = 1000 
+        chunk_size = 1000
         num_chunks = (episodes + chunk_size - 1) // chunk_size
+        
+        # Track profiling block start across 10000-episode windows
+        t_block_start = time.time()
+        metrics_block = {"sim": 0, "buf": 0, "train": 0}
         
         # Parallel setup
         ctx = mp.get_context('spawn') if self.device.type != 'cpu' else mp.get_context('fork')
         
         with ctx.Pool(processes=num_workers) as pool:
             for c in range(num_chunks):
-                # ── Per-Block Performance Tracking ──
-                if c % (1000 // chunk_size) == 0:
+                # ── Per-Block Performance Tracking (reset every 10000 episodes) ──
+                if (start_ep + c * chunk_size) % 10000 == 0:
                     t_block_start = time.time()
                     metrics_block = {"sim": 0, "buf": 0, "train": 0}
 
@@ -295,12 +299,12 @@ class DQNAgent(Agent):
                     t_train = time.time() - t_train_start
                     metrics_block["train"] += t_train
                     
-                    # ── Performance Reporting (Every 1000 episodes) ──
+                    # ── Performance Reporting (Every 10000 episodes) ──
                     global_ep = start_ep + (c + 1) * chunk_size
-                    if global_ep % 1000 == 0:
+                    if global_ep % 10000 == 0:
                         t_block_total = time.time() - t_block_start
-                        gps = 1000 / t_block_total
-                        print(f"\n⏱️ Profiling (Block {global_ep-1000}-{global_ep}):")
+                        gps = 10000 / t_block_total
+                        print(f"\n⏱️ Profiling (Block {global_ep-10000}-{global_ep}):")
                         print(f"   - Simulation: {metrics_block['sim']:.1f}s ({(metrics_block['sim']/t_block_total)*100:.1f}%)")
                         print(f"   - Buffering:  {metrics_block['buf']:.1f}s ({(metrics_block['buf']/t_block_total)*100:.1f}%)")
                         print(f"   - XPU Training: {metrics_block['train']:.1f}s ({(metrics_block['train']/t_block_total)*100:.1f}%)")

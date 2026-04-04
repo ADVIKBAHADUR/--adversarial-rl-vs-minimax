@@ -44,6 +44,7 @@ models/**/*
 !models/connect4/qlearning/model_best.pkl
 !models/connect4/dqn/model_500k_tuned_v11_rescue_best.pt
 !models/connect4/dqn/model_validity_best.pt
+!models/connect4/dqn/model_512x4_200k_best.pt
 
 # Project Specific - Results
 results/figures/

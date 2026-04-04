@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--gate-1", type=float, default=0.85, help="Non-loss threshold to pass Stage 1 (Random)")
     parser.add_argument("--gate-2", type=float, default=0.80, help="Non-loss threshold to pass Stage 2 (Default)")
     parser.add_argument("--max-stage", type=int, default=3, help="Maximum curriculum stage to reach (1=Random, 2=Default, 3=Minimax)")
-    parser.add_argument("--val-freq", type=int, default=5000, help="Frequency of Gold Standard Minimax validation")
+    parser.add_argument("--val-freq", type=int, default=5000, help="Frequency of Gold Standard Minimax validation (default: every 5000 episodes)")
     
     parser.add_argument("--lr-decay", type=float, default=None, help="Learning rate decay per episode")
     parser.add_argument("--lr-min", type=float, default=None, help="Minimum learning rate")
@@ -132,7 +132,7 @@ def main():
 
     # chunk_size = how many episodes between each evaluation.
     default_chunk = max(500, cfg.episodes // 100)
-    chunk_size = args.eval_freq if args.eval_freq else min(default_chunk, 5000)
+    chunk_size = args.eval_freq if args.eval_freq else min(default_chunk, 1000)
     
     # Resume from checkpoint if provided
     episodes_run = 0

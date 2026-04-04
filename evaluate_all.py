@@ -124,6 +124,8 @@ def build_roster(game_name: str) -> list[dict]:
     add("Default", lambda: DefaultAgent(g))
 
     if game_name == "tictactoe":
+        add("Minimax(vanilla,d=9)",
+            lambda: MinimaxAgent(g, MinimaxConfig(max_depth=9, use_alpha_beta=False, move_ordering=False)))
         add("Minimax(αβ,d=9)",
             lambda: MinimaxAgent(g, MinimaxConfig(max_depth=9, use_alpha_beta=True, move_ordering=True)))
         add("Q-Learning",
@@ -134,9 +136,8 @@ def build_roster(game_name: str) -> list[dict]:
             model_path="models/tictactoe/dqn/optimized_200k_best.pt")
 
     elif game_name == "connect4":
-        # Added Vanilla C4 Minimax
-        add("Minimax(vanilla,d=4)",
-            lambda: MinimaxAgent(g, MinimaxConfig(max_depth=4, use_alpha_beta=False, move_ordering=False)))
+        add("Minimax(vanilla,d=3)",
+            lambda: MinimaxAgent(g, MinimaxConfig(max_depth=3, use_alpha_beta=False, move_ordering=False)))
         add("Minimax(αβ,d=5)",
             lambda: MinimaxAgent(g, MinimaxConfig(max_depth=5, use_alpha_beta=True, move_ordering=True)))
         add("Q-Learning",
@@ -144,7 +145,7 @@ def build_roster(game_name: str) -> list[dict]:
             model_path="models/connect4/qlearning/model_best.pkl")
         add("DQN",
             lambda: DQNAgent(g),
-            model_path="models/connect4/dqn/model_500k_tuned_v11_rescue_best.pt")  # skipped gracefully if not trained
+            model_path="models/connect4/dqn/model_validity_best.pt")
 
     return roster
 
@@ -157,7 +158,7 @@ def _game(name: str):
 # SECTION 2 — TOURNAMENT RUNNER
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def run_tournament(roster: list[dict], game_name: str, n_games: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+def run_tournament(roster: list[dict], game_name: str, n_games: int, max_workers: int = 4) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Run full round-robin. Returns:
       - match_df: one row per (p1, p2) matchup with win/draw/loss/time
@@ -172,7 +173,6 @@ def run_tournament(roster: list[dict], game_name: str, n_games: int) -> tuple[pd
     for s in skipped:
         print(f"  ⚠️  Skipping '{s['name']}': {s['skip']}")
 
-    # Wrap all agents for timing
     for r in active:
         _timed(r["agent"])
 
@@ -186,7 +186,7 @@ def run_tournament(roster: list[dict], game_name: str, n_games: int) -> tuple[pd
             a1["agent"]._move_times.clear()
             a2["agent"]._move_times.clear()
 
-            print(f"  [{done+1}/{total_matchups}] {a1['name']} vs {a2['name']} ...", end="", flush=True)
+            print(f"  [{done+1}/{total_matchups}] {a1['name']} vs {a2['name']}")
             t0 = time.perf_counter()
             result = run_match(game, a1["agent"], a2["agent"],
                                n_games=n_games, swap_sides=True, verbose=False)
@@ -204,7 +204,7 @@ def run_tournament(roster: list[dict], game_name: str, n_games: int) -> tuple[pd
                 "p2_ms_per_move": round(t2, 3),
                 "n_games": result["n_games"],
             })
-            print(f" {result['p1_win_pct']:.0f}% / {result['draw_pct']:.0f}% / {result['p2_win_pct']:.0f}%  ({elapsed:.1f}s)")
+            print(f"\r    {result['p1_win_pct']:.0f}% / {result['draw_pct']:.0f}% / {result['p2_win_pct']:.0f}%  ({elapsed:.1f}s)")
             done += 1
 
     match_df = pd.DataFrame(rows)
@@ -559,6 +559,10 @@ def main():
     parser.add_argument("--game", choices=["tictactoe", "connect4", "all"], default="all")
     parser.add_argument("--games", type=int, default=100,
                         help="Games per matchup (default 100, use ≥200 for stable results)")
+    parser.add_argument("--c4-games", type=int, default=None,
+                        help="Override games per matchup for Connect 4 only (default: same as --games)")
+    parser.add_argument("--workers", type=int, default=4,
+                        help="Parallel matchup threads (default 4)")
     args = parser.parse_args()
 
     games_to_run = (["tictactoe", "connect4"] if args.game == "all"
@@ -569,12 +573,13 @@ def main():
     all_agent_dfs = []
 
     for game_name in games_to_run:
-        print(f"\n{'='*60}")
-        print(f"🎮  {game_name.upper()} TOURNAMENT  ({args.games} games/matchup)")
+        n = args.c4_games if (game_name == "connect4" and args.c4_games) else args.games
+        print(f"{'='*60}")
+        print(f"🎮  {game_name.upper()} TOURNAMENT  ({n} games/matchup)")
         print(f"{'='*60}")
 
         roster = build_roster(game_name)
-        match_df, agent_df = run_tournament(roster, game_name, args.games)
+        match_df, agent_df = run_tournament(roster, game_name, n, max_workers=args.workers)
 
         game_results[game_name] = {"match_df": match_df, "agent_df": agent_df}
         all_match_dfs.append(match_df)

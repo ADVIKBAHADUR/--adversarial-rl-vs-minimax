@@ -11,6 +11,11 @@ from .base import Agent
 from ..config import MinimaxConfig
 
 
+# Cap the transposition table. With 86GB+ RAM we can afford a large cache.
+# Each entry ~200 bytes, so 5M entries ≈ 1GB.
+_MAX_CACHE_SIZE = 5_000_000
+
+
 class MinimaxAgent(Agent):
     """Minimax game-playing agent with optional alpha-beta pruning."""
 
@@ -93,6 +98,8 @@ class MinimaxAgent(Agent):
             else:
                 best_score = min(best_score, score)
                 
+        if len(self._cache) >= _MAX_CACHE_SIZE:
+            self._cache.clear()
         self._cache[key] = best_score
         return best_score
 
@@ -157,7 +164,9 @@ class MinimaxAgent(Agent):
             flag = 'LOWERBOUND'
         else:
             flag = 'EXACT'
-            
+
+        if len(self._cache) >= _MAX_CACHE_SIZE:
+            self._cache.clear()
         self._cache[key] = {'value': best_score, 'flag': flag}
         return best_score
 
