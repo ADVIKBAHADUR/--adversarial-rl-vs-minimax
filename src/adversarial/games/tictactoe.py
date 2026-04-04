@@ -54,12 +54,29 @@ class TicTacToe(Game):
                 return player
         return 0
 
+    def state_to_key(self, state: np.ndarray) -> tuple:
+        """Symmetry reduction for square Tic-Tac-Toe board (8 symmetries)."""
+        norm_state = self.normalize_state(state)
+        return tuple(norm_state.ravel())
+
+    def normalize_state(self, state: np.ndarray) -> np.ndarray:
+        """Return the canonical representation of the state (8 symmetries)."""
+        symmetries = []
+        curr = state
+        for _ in range(4):
+            curr = np.rot90(curr)
+            symmetries.append(curr)
+            symmetries.append(np.fliplr(curr))
+            
+        # Pick the one that is lexicographically smallest when flattened
+        return min(symmetries, key=lambda x: tuple(x.ravel()))
+
     def render(self, state: np.ndarray) -> str:
         symbols = {0: "·", 1: "X", -1: "O"}
         rows = []
         n = self.board_size
         # Column headers
-        rows.append("  " + " ".join(str(i) for i in range(n)))
+        rows.append("  " + " ".join(str(j) for j in range(n)))
         for r in range(n):
             row_str = " ".join(symbols[int(state[r, c])] for c in range(n))
             rows.append(f"{r} {row_str}")

@@ -61,6 +61,20 @@ class Connect4(Game):
                 return player
         return 0
 
+    def state_to_key(self, state: np.ndarray) -> tuple:
+        """Convert board to a canonical hashable key for the Q-table."""
+        # Horizontal mirror symmetry reduction
+        norm_state = self.normalize_state(state)
+        return tuple(norm_state.ravel())
+
+    def normalize_state(self, state: np.ndarray) -> np.ndarray:
+        """Return the canonical representation of the state (horizontal mirror)."""
+        mirrored = np.flip(state, axis=1)
+        # Flatten and compare to pick a stable canonical version
+        if tuple(state.ravel()) <= tuple(mirrored.ravel()):
+            return state
+        return mirrored
+
     def render(self, state: np.ndarray) -> str:
         symbols = {0: "·", 1: "X", -1: "O"}
         rows = []

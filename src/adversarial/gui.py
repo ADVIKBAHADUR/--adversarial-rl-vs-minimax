@@ -14,16 +14,16 @@ from .games import TicTacToe, Connect4
 from .agents import DefaultAgent, MinimaxAgent, QLearningAgent, DQNAgent, HumanAgent
 
 
-# ── Colours ───────────────────────────────────────────────────────────────────
+# ── Colours (Academic Seaborn Palette) ────────────────────────────────────────
 
-BG_COLOUR      = (30, 30, 40)
-GRID_COLOUR    = (70, 70, 90)
-TEXT_COLOUR    = (220, 220, 230)
-P1_COLOUR      = (46, 204, 113)   # Green for X / Player 1
-P2_COLOUR      = (231, 76, 60)    # Red for O / Player 2
-EMPTY_COLOUR   = (50, 50, 65)
-HIGHLIGHT      = (52, 152, 219)   # Blue highlight
-PANEL_COLOUR   = (40, 40, 55)
+BG_COLOUR      = (255, 255, 255)  # Pure white background
+GRID_COLOUR    = (230, 230, 230)  # Subtle light grey grid lines
+TEXT_COLOUR    = (51, 51, 51)     # Dark charcoal text
+P1_COLOUR      = (76, 114, 176)   # Seaborn Blue (C0)
+P2_COLOUR      = (221, 132, 82)   # Seaborn Orange/Red (C1)
+EMPTY_COLOUR   = (250, 250, 250)  # Off-white for empty cells
+HIGHLIGHT      = (100, 100, 100)  # Neutral grey highlight
+PANEL_COLOUR   = (244, 246, 249)  # Very light grey-blue for sidebar
 
 
 # ── GUI class ─────────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ class GameGUI:
         self.done = False
         self.winner = 0
         self.move_history = []
-        self.status_msg = f"{agent1.name}'s turn (X)"
+        self.status_msg = f"{agent1.name}'s turn (P1)"
 
         # GUI sizing
         rows, cols = game.state_shape
@@ -136,7 +136,7 @@ class GameGUI:
 
     def _apply_move(self, action: int):
         self.state, self.done, self.winner = self.game.step(self.state, action, self.player)
-        symbol = "X" if self.player == 1 else "O"
+        symbol = "P1" if self.player == 1 else "P2"
         self.move_history.append(f"{symbol}: {action}")
 
         if self.done:
@@ -148,7 +148,7 @@ class GameGUI:
         else:
             self.player *= -1
             name = self.agents[self.player].name
-            symbol = "X" if self.player == 1 else "O"
+            symbol = "P1" if self.player == 1 else "P2"
             self.status_msg = f"{name}'s turn ({symbol})"
 
     def _reset(self):
@@ -157,7 +157,7 @@ class GameGUI:
         self.done = False
         self.winner = 0
         self.move_history = []
-        self.status_msg = f"{self.agents[1].name}'s turn (X)"
+        self.status_msg = f"{self.agents[1].name}'s turn (P1)"
 
     def _draw(self):
         self.screen.fill(BG_COLOUR)
@@ -174,6 +174,7 @@ class GameGUI:
     def _draw_board(self):
         rows, cols = self.game.state_shape
         ox, oy = self.PADDING, self.PADDING + 60
+        is_connect4 = isinstance(self.game, Connect4)
 
         for r in range(rows):
             for c in range(cols):
@@ -184,11 +185,17 @@ class GameGUI:
 
                 val = int(self.state[r, c])
                 if val == 1:
-                    txt = self.font_cell.render("X", True, P1_COLOUR)
-                    self.screen.blit(txt, txt.get_rect(center=rect.center))
+                    if is_connect4:
+                        pygame.draw.circle(self.screen, P1_COLOUR, rect.center, self.CELL_SIZE // 2 - 10)
+                    else:
+                        txt = self.font_cell.render("X", True, P1_COLOUR)
+                        self.screen.blit(txt, txt.get_rect(center=rect.center))
                 elif val == -1:
-                    txt = self.font_cell.render("O", True, P2_COLOUR)
-                    self.screen.blit(txt, txt.get_rect(center=rect.center))
+                    if is_connect4:
+                        pygame.draw.circle(self.screen, P2_COLOUR, rect.center, self.CELL_SIZE // 2 - 10)
+                    else:
+                        txt = self.font_cell.render("O", True, P2_COLOUR)
+                        self.screen.blit(txt, txt.get_rect(center=rect.center))
 
     def _draw_info_panel(self):
         px = self.PADDING * 2 + self.board_w
@@ -201,10 +208,10 @@ class GameGUI:
 
         # Player info
         y = py + 15
-        p1_text = self.font_info.render(f"X: {self.agents[1].name}", True, P1_COLOUR)
+        p1_text = self.font_info.render(f"P1: {self.agents[1].name}", True, P1_COLOUR)
         self.screen.blit(p1_text, (px + 15, y))
         y += 35
-        p2_text = self.font_info.render(f"O: {self.agents[-1].name}", True, P2_COLOUR)
+        p2_text = self.font_info.render(f"P2: {self.agents[-1].name}", True, P2_COLOUR)
         self.screen.blit(p2_text, (px + 15, y))
         y += 45
 
@@ -215,7 +222,7 @@ class GameGUI:
 
         visible_moves = self.move_history[-8:]
         for move in visible_moves:
-            colour = P1_COLOUR if move.startswith("X") else P2_COLOUR
+            colour = P1_COLOUR if move.startswith("P1") else P2_COLOUR
             txt = self.font_info.render(move, True, colour)
             self.screen.blit(txt, (px + 20, y))
             y += 25

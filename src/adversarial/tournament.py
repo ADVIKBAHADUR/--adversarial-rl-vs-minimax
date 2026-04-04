@@ -82,8 +82,12 @@ def run_match(game, agent1, agent2, n_games: int = 100,
             else:
                 results["draws"] += 1
             results["total_moves"] += result["moves"]
-            results["p1_times"].append(result["p1_avg_time"])
-            results["p2_times"].append(result["p2_avg_time"])
+            if swapped:
+                results["p1_times"].append(result["p2_avg_time"])
+                results["p2_times"].append(result["p1_avg_time"])
+            else:
+                results["p1_times"].append(result["p1_avg_time"])
+                results["p2_times"].append(result["p2_avg_time"])
 
     total = results["p1_wins"] + results["p2_wins"] + results["draws"]
     return {
@@ -135,10 +139,13 @@ def _make_game(name: str):
     raise ValueError(f"Unknown game: {name}")
 
 
-def _make_agent(name: str, game):
+def _make_agent(name: str, game, depth: int | None = None, model_path: str | None = None):
+    from .config import MinimaxConfig
     agents_map = {
         "default": lambda: DefaultAgent(game),
+        "random": lambda: RandomAgent(game),
         "minimax": lambda: MinimaxAgent(game),
+        "minimax_ab": lambda: MinimaxAgent(game, MinimaxConfig(use_alpha_beta=True)),
         "qlearning": lambda: QLearningAgent(game),
         "dqn": lambda: DQNAgent(game),
     }
@@ -146,6 +153,15 @@ def _make_agent(name: str, game):
         raise ValueError(f"Unknown agent: {name}. Available: {list(agents_map.keys())}")
     agent = agents_map[name]()
     agent.set_game(game)
+
+    # Apply depth if supported
+    if depth is not None and isinstance(agent, MinimaxAgent):
+        agent.cfg.max_depth = depth
+
+    if model_path is not None and hasattr(agent, "load"):
+        agent.load(model_path)
+        print(f"Loaded {name} model from {model_path}")
+
     return agent
 
 
@@ -154,13 +170,21 @@ def main_cli():
     parser.add_argument("--game", choices=["tictactoe", "connect4"], default="tictactoe")
     parser.add_argument("--agents", nargs="+", default=["default"],
                         help="Agents to include in tournament")
+    parser.add_argument("--models", nargs="*", default=[],
+                        help="Parallel list of model paths (use 'none' for agents without models)")
     parser.add_argument("--games", type=int, default=100, help="Games per matchup")
+    parser.add_argument("--depth", type=int, default=None, help="Max depth for Minimax agents")
     parser.add_argument("--output", type=str, default=None, help="CSV output path")
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
 
     game = _make_game(args.game)
-    agents = [_make_agent(name, game) for name in args.agents]
+    
+    models = args.models + ["none"] * max(0, len(args.agents) - len(args.models))
+    agents = []
+    for name, m_path in zip(args.agents, models):
+        path = m_path if m_path.lower() != "none" else None
+        agents.append(_make_agent(name, game, args.depth, path))
 
     if len(agents) < 2:
         print("Need at least 2 agents for a tournament.")

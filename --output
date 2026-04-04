@@ -1,0 +1,8 @@
+usage: train.py [-h] [--game {tictactoe,connect4}] [--algo {qlearning,dqn}]
+                [--episodes EPISODES] [--opponent {default,random}]
+                [--output OUTPUT] [--lr LR] [--epsilon-decay EPSILON_DECAY]
+                [--curriculum CURRICULUM] [--draw-reward DRAW_REWARD]
+                [--eval-freq EVAL_FREQ] [--discount DISCOUNT]
+                [--hidden-sizes HIDDEN_SIZES] [--buffer-size BUFFER_SIZE]
+                [--grad-steps GRAD_STEPS]
+train.py: error: unrecognized arguments: connect4 dqn 100000 default 100 2000 256,256 100000 0.9995 10 0.3 models/connect4/dqn/model

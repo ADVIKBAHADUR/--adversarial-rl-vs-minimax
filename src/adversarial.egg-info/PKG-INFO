@@ -4,7 +4,6 @@ Version: 0.1.0
 Summary: Adversarial RL vs Minimax: Comparing game-playing algorithms on Tic Tac Toe and Connect 4
 Requires-Python: >=3.10
 Requires-Dist: numpy>=1.24
-Requires-Dist: torch>=2.0
 Requires-Dist: matplotlib>=3.7
 Requires-Dist: pygame>=2.5
 Requires-Dist: tqdm>=4.65

@@ -33,8 +33,8 @@ class MinimaxConfig:
 
 @dataclass
 class QLearningConfig:
-    learning_rate: float = 0.1
-    discount: float = 0.95
+    learning_rate: float = 0.2
+    discount: float = 0.9
     epsilon_start: float = 1.0
     epsilon_end: float = 0.01
     epsilon_decay: float = 0.9995
@@ -45,14 +45,20 @@ class QLearningConfig:
 class DQNConfig:
     learning_rate: float = 1e-3
     batch_size: int = 64
-    buffer_size: int = 10_000
-    target_update_freq: int = 500
+    buffer_size: int = 50_000       # Large buffer retains diverse history across phases
+    target_update_freq: int = 200   # sync target net every 200 episodes
     gamma: float = 0.99
     epsilon_start: float = 1.0
-    epsilon_end: float = 0.01
-    epsilon_decay: float = 0.9995
+    epsilon_end: float = 0.05       # Keep 5% exploration to avoid greedy collapse
+    epsilon_decay: float = 0.999    # Exponential decay: hit floor ~ep 3000 for 20k run
+    lr_decay: float = 1.0           # 1.0 = no decay
+    lr_min: float = 1e-6            # Floor for the learning rate
     hidden_sizes: List[int] = field(default_factory=lambda: [128, 128])
     episodes: int = 20_000
+    grad_steps_per_episode: int = 5 # ~1 update per agent action (TTT avg ~5 agent turns)
+    win_reward: float = 1.0
+    draw_reward: float = 0.3        # draws are good — reward them properly
+    loss_reward: float = -1.0
 
 
 # ── Tournament/experiment configs ─────────────────────────────────────────────

@@ -36,6 +36,11 @@ adversarial-rl-vs-minimax/
 │       └── config.py              # Default configs & param schemas
 │
 ├── models/                        # Saved trained models
+│   ├── connect4/
+│   │   └── dqn/                   # Base and curriculum variants
+│   └── tictactoe/
+│       ├── dqn/                   # Base, DoubleDQN, Fixed, and variants
+│       └── qlearning/             # Tabular Q-learning checkpoints
 ├── results/                       # Experiment CSV/JSON outputs
 └── figures/                       # Generated plots
 ```

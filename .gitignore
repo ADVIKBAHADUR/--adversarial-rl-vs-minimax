@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Virtual Environments
+venv/
+.env
+.venv/
+env.bak/
+venv.bak/
+
+# Project Specific - Models
+# We ignore all intermediate checkpoints (14GB+) and only keep "best" finalized models
+models/**/*
+
+# Allow directory structure
+!models/**/
+
+# Specifically allow the "Best" finalized models for each algorithm
+!models/tictactoe/qlearning/model_best.pkl
+!models/tictactoe/dqn/optimized_200k_best.pt
+!models/connect4/qlearning/model_best.pkl
+!models/connect4/dqn/model_500k_tuned_v11_rescue_best.pt
+!models/connect4/dqn/model_validity_best.pt
+
+# Project Specific - Results
+results/figures/
+results/latex_tables/
+results/*.csv
+
+# System
+.DS_Store
+Thumbs.db

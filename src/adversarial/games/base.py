@@ -47,9 +47,14 @@ class Game(ABC):
     def render(self, state: np.ndarray) -> str:
         """Return a string representation of the board."""
 
-    def state_to_key(self, state: np.ndarray) -> int:
-        """Hash the board state for Q-table lookups."""
-        return hash(state.tobytes())
+    def state_to_key(self, state: np.ndarray) -> tuple:
+        """Hash the board state deterministically for Q-table lookups.
+        
+        We return a tuple of the flattened array instead of `hash()` because
+        Python's built-in `hash()` is randomized per-process, meaning saved 
+        models would break upon reloading.
+        """
+        return tuple(state.ravel().tolist())
 
     def clone(self, state: np.ndarray) -> np.ndarray:
         """Return a deep copy of the state."""

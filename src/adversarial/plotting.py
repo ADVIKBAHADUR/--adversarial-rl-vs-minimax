@@ -20,8 +20,10 @@ STYLE = {
     "axes.linewidth": 1.5,
     "axes.grid": True,
     "grid.alpha": 0.3,
-    "figure.figsize": (10, 6),
-    "savefig.dpi": 150,
+    "axes.labelweight": "bold",
+    "axes.titleweight": "bold",
+    "figure.figsize": (10, 7),
+    "savefig.dpi": 300,
     "savefig.bbox": "tight",
 }
 
@@ -104,27 +106,142 @@ def plot_head_to_head(df: pd.DataFrame, title: str = "Head-to-Head Results",
     return fig
 
 
-def plot_training_curve(episodes: list, win_rates: list, algo_name: str = "RL",
-                        window: int = 100, output_dir: str = "figures"):
-    """Training convergence curve (rolling win rate)."""
+def plot_training_curve(episodes: list, metrics: dict | list, 
+                        opponent_history: list | None = None,
+                        algo_name: str = "DQN", output_dir: str = "figures",
+                        window: int = 20, smooth: bool = True,
+                        epsilon_history: list | None = None,
+                        vtable_history: list | None = None,
+                        title: str | None = None,
+                        filename: str | None = None):
+    """Training convergence curve with optional V-table tracking and smoothing."""
     apply_style()
-    fig, ax = plt.subplots(figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(12, 7))
 
-    # Rolling average
-    if len(win_rates) > window:
-        smoothed = pd.Series(win_rates).rolling(window).mean()
-        ax.plot(episodes, smoothed, label=f"Rolling avg (window={window})", color="#3498db")
-        ax.plot(episodes, win_rates, alpha=0.15, color="#3498db")
-    else:
-        ax.plot(episodes, win_rates, color="#3498db")
+    if isinstance(metrics, list):
+        metrics = {"Non-Loss Rate": metrics}
+
+    # Enhanced colour palette for final report
+    colours = {
+        "wins": "#2ecc71",      # Green
+        "draws": "#f39c12",     # Orange
+        "losses": "#e74c3c",    # Red
+        "win_pct": "#2ecc71",   # Consistency for CSV keys
+        "draw_pct": "#f39c12",
+        "loss_pct": "#e74c3c",
+        "Non-Loss Rate": "#000000", # Black
+        "non_loss_pct": "#000000"
+    }
+    labels = {
+        "wins": "Wins %", "draws": "Draws %", "losses": "Losses %",
+        "win_pct": "Wins %", "draw_pct": "Draws %", "loss_pct": "Losses %",
+        "Non-Loss Rate": "Non-Loss Rate (Win + Draw)",
+        "non_loss_pct": "Non-Loss Rate (Win + Draw)"
+    }
+
+    # ── Background shading for Curriculum phases ──────────────────────────────
+    if opponent_history and len(opponent_history) == len(episodes):
+        # Accessible phase colors (Light, distinct hues)
+        phase_colors = {
+            "Random": "#e0f7fa",  # Very light Cyan
+            "Default": "#fff8e1", # Very light Amber
+            "Minimax": "#fce4ec"  # Very light Pink (as requested)
+        }
+        
+        # Text colors for better readability against shading
+        phase_text_colors = {
+            "Random": "#006064",
+            "Default": "#ff8f00",
+            "Minimax": "#880e4f"
+        }
+        
+        current_opp = opponent_history[0]
+        start_idx = 0
+        
+        # Add labels and shading
+        for i in range(1, len(opponent_history)):
+            if opponent_history[i] != current_opp or i == len(opponent_history) - 1:
+                label = f"VS {current_opp.upper()}"
+                shade_color = phase_colors.get(current_opp, "#cccccc")
+                text_color = phase_text_colors.get(current_opp, "#666666")
+                
+                start_x = episodes[start_idx]
+                end_x = episodes[i]
+                
+                ax.axvspan(start_x, end_x, alpha=0.4, color=shade_color)
+                # Clean up phase name for label (e.g. Minimax(αβ, d=2) -> MINIMAX)
+                clean_name = current_opp.split('(')[0].upper()
+                msg = f"VS {clean_name}"
+                ax.text((start_x + end_x) / 2, 102, msg, ha="center", va="bottom",
+                         fontsize=11, fontweight="bold", color=text_color, alpha=0.9)
+                
+                current_opp = opponent_history[i]
+                start_idx = i
+
+    # ── Trend: Gold Standard Validation (Curriculum-Independent) ─────────────
+    val_episodes = metrics.get("val_episodes", [])
+    val_wins = metrics.get("val_wins", [])
+    if val_episodes and val_wins:
+        ax.plot(val_episodes, val_wins, label="MiniMax win rate", 
+                color='#f1c40f', linestyle='--', linewidth=3, marker='o', 
+                markersize=8, alpha=1.0, zorder=10)
+
+    # ── Plot standard metrics ───────────────────────────────────────────────
+    for key, values in metrics.items():
+        if key.startswith("val_"): continue
+        if key in ["vtable_size", "epsilon"]: continue # Handled by secondary axis
+        if not values: continue
+            
+        color = colours.get(key, "#3498db")
+        label = labels.get(key, str(key).replace("_", " ").capitalize())
+        linewidth = 2.5 if "non_loss" in key.lower() or "non-loss" in key.lower() else 1.5
+
+        if smooth and len(values) > window:
+            smoothed = pd.Series(values).rolling(window, min_periods=1).mean()
+            ax.plot(episodes, smoothed, label=label, color=color, linewidth=linewidth)
+            ax.plot(episodes, values, alpha=0.1, color=color, linestyle='-')
+        else:
+            ax.plot(episodes, values, label=label, color=color, linewidth=linewidth)
 
     ax.set_xlabel("Episode")
-    ax.set_ylabel("Win Rate")
-    ax.set_title(f"{algo_name} Training Convergence")
-    ax.legend()
+    ax.set_ylabel("Percentage (%)")
+    display_title = title if title else f"{algo_name} Training Convergence"
+    ax.set_title(display_title, fontweight="bold")
+    
+    # ── Secondary Axis: Epsilon or V-Table ──────────────────────────────────
+    if (epsilon_history and len(epsilon_history) == len(episodes)) or \
+       (vtable_history and len(vtable_history) == len(episodes)):
+        
+        ax2 = ax.twinx()
+        handles, labels_list = ax.get_legend_handles_labels()
+
+        if vtable_history and any(v is not None for v in vtable_history):
+            # Fill Nones for plotting if mixed
+            v_plot = [v if v is not None else 0 for v in vtable_history]
+            line, = ax2.plot(episodes, v_plot, color='#9b59b6', linestyle='--', 
+                             alpha=0.7, linewidth=2, label='V-Table States')
+            ax2.set_ylabel("Unique States Explored", color='#8e44ad', fontsize=12, fontweight='bold')
+            ax2.tick_params(axis='y', labelcolor='#8e44ad')
+            handles.append(line); labels_list.append('V-Table States')
+        elif epsilon_history and len(epsilon_history) == len(episodes):
+            line, = ax2.plot(episodes, epsilon_history, color='#666666', linestyle='-', 
+                             alpha=0.6, linewidth=1.5, label='Epsilon')
+            ax2.set_ylabel("Exploration Rate (Epsilon)", color='black', fontsize=12, fontweight='bold')
+            ax2.tick_params(axis='y', labelcolor='black')
+            ax2.set_ylim(0, 1.1)
+            handles.append(line); labels_list.append('Epsilon')
+
+        ax.legend(handles, labels_list, 
+                  loc="upper center", bbox_to_anchor=(0.5, -0.12),
+                  ncol=len(handles), frameon=False)
+    else:
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12),
+                  ncol=len(ax.get_lines()), frameon=False)
+    ax.set_ylim(-5, 115) # Leave room for labels
 
     fig.tight_layout()
-    save_fig(fig, f"training_curve_{algo_name.lower().replace(' ', '_')}", output_dir)
+    final_filename = filename if filename else f"training_curve_{algo_name.lower().replace(' ', '_')}"
+    save_fig(fig, final_filename, output_dir)
     return fig
 
 
