@@ -40,13 +40,20 @@ class MinimaxAgent(Agent):
         t0 = time.perf_counter()
 
         actions = np.where(valid_actions)[0]
-        if self.cfg.move_ordering:
-            actions = self._order_moves(actions)
+        
+        # 1. Stochastic 'nerf' check
+        if self.cfg.nerf_factor > 0 and np.random.random() < self.cfg.nerf_factor:
+            return int(np.random.choice(actions))
 
-        best_action = actions[0]
+        if self.cfg.move_ordering:
+            ordered = self._order_moves(actions)
+        else:
+            ordered = actions
+
+        best_actions = []
         best_score = -np.inf
 
-        for a in actions:
+        for a in ordered:
             new_state, done, winner = self._game.step(state, a, 1)
             if done:
                 score = self._terminal_score(winner)
@@ -57,8 +64,13 @@ class MinimaxAgent(Agent):
 
             if score > best_score:
                 best_score = score
-                best_action = a
+                best_actions = [a]
+            elif score == best_score:
+                best_actions.append(a)
 
+        # 2. Random tie-breaking ensures different games each time
+        best_action = np.random.choice(best_actions)
+        
         self.stats["time_per_move"] = time.perf_counter() - t0
         return int(best_action)
 

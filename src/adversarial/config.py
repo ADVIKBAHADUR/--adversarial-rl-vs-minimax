@@ -29,6 +29,7 @@ class MinimaxConfig:
     max_depth: Optional[int] = None   # None = unlimited
     use_alpha_beta: bool = False
     move_ordering: bool = True        # centre-first ordering for α-β
+    nerf_factor: float = 0.0          # Probability [0-1] of picking a random move
 
 
 @dataclass

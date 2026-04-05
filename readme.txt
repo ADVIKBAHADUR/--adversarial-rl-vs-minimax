@@ -19,9 +19,9 @@ adv-play --game tictactoe --p1 minimax --p2 human
 ```
 
 ### Appendix 2: Minimax (Alpha-Beta Pruning)
-Runs Minimax with Alpha-Beta pruning enabled.
+Runs Minimax with Alpha-Beta pruning. Use `--nerf` to add variety.
 ```bash
-adv-play --game tictactoe --p1 minimax --ab --p2 human
+adv-play --game tictactoe --p1 minimax --ab --nerf 0.1 --p2 human
 ```
 
 ### Appendix 3: RL (Tabular Q-Learning)

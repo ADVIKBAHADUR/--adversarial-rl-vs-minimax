@@ -11,13 +11,13 @@ def _make_game(name: str):
     return games[name]()
 
 
-def _make_agent(name: str, game, model_path: str | None = None, depth: int | None = None, use_ab: bool = False):
+def _make_agent(name: str, game, model_path: str | None = None, depth: int | None = None, use_ab: bool = False, nerf: float = 0.0):
     if name == "human":
         return HumanAgent()
 
     if name == "minimax":
         from .config import MinimaxConfig
-        cfg = MinimaxConfig(max_depth=depth, use_alpha_beta=use_ab, move_ordering=use_ab)
+        cfg = MinimaxConfig(max_depth=depth, use_alpha_beta=use_ab, move_ordering=use_ab, nerf_factor=nerf)
         agent = MinimaxAgent(game, cfg)
     else:
         agents = {
@@ -80,12 +80,13 @@ def main():
     parser.add_argument("--model2", default=None, help="Model path for P2")
     parser.add_argument("--depth", type=int, default=None, help="Max depth for minimax")
     parser.add_argument("--ab", action="store_true", help="Use alpha-beta pruning for minimax")
+    parser.add_argument("--nerf", type=float, default=0.0, help="Probability (0-1) of making a random move")
     parser.add_argument("--rounds", type=int, default=1, help="Number of games")
     args = parser.parse_args()
 
     game = _make_game(args.game)
-    agent1 = _make_agent(args.p1, game, args.model1, args.depth, args.ab)
-    agent2 = _make_agent(args.p2, game, args.model2, args.depth, args.ab)
+    agent1 = _make_agent(args.p1, game, args.model1, args.depth, args.ab, args.nerf)
+    agent2 = _make_agent(args.p2, game, args.model2, args.depth, args.ab, args.nerf)
 
     scores = {1: 0, -1: 0, 0: 0}
     for i in range(args.rounds):
