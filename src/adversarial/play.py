@@ -11,17 +11,22 @@ def _make_game(name: str):
     return games[name]()
 
 
-def _make_agent(name: str, game, model_path: str | None = None):
+def _make_agent(name: str, game, model_path: str | None = None, depth: int | None = None, use_ab: bool = False):
     if name == "human":
         return HumanAgent()
 
-    agents = {
-        "default": lambda: DefaultAgent(game),
-        "minimax": lambda: MinimaxAgent(game),
-        "qlearning": lambda: QLearningAgent(game),
-        "dqn": lambda: DQNAgent(game),
-    }
-    agent = agents[name]()
+    if name == "minimax":
+        from .config import MinimaxConfig
+        cfg = MinimaxConfig(max_depth=depth, use_alpha_beta=use_ab, move_ordering=use_ab)
+        agent = MinimaxAgent(game, cfg)
+    else:
+        agents = {
+            "default": lambda: DefaultAgent(game),
+            "qlearning": lambda: QLearningAgent(game),
+            "dqn": lambda: DQNAgent(game),
+        }
+        agent = agents[name]()
+
     agent.set_game(game)
     if model_path:
         agent.load(model_path)
@@ -73,12 +78,14 @@ def main():
     parser.add_argument("--p2", default="default", help="Player 2 agent")
     parser.add_argument("--model1", default=None, help="Model path for P1")
     parser.add_argument("--model2", default=None, help="Model path for P2")
+    parser.add_argument("--depth", type=int, default=None, help="Max depth for minimax")
+    parser.add_argument("--ab", action="store_true", help="Use alpha-beta pruning for minimax")
     parser.add_argument("--rounds", type=int, default=1, help="Number of games")
     args = parser.parse_args()
 
     game = _make_game(args.game)
-    agent1 = _make_agent(args.p1, game, args.model1)
-    agent2 = _make_agent(args.p2, game, args.model2)
+    agent1 = _make_agent(args.p1, game, args.model1, args.depth, args.ab)
+    agent2 = _make_agent(args.p2, game, args.model2, args.depth, args.ab)
 
     scores = {1: 0, -1: 0, 0: 0}
     for i in range(args.rounds):

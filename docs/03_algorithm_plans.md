@@ -77,30 +77,31 @@ class Agent:
 
 ### Configurable Parameters
 
-| Parameter | Default TTT | Default C4 | Description |
-|---|---|---|---|
-| `learning_rate` (α) | 0.1 | 0.1 | Step size |
-| `discount` (γ) | 0.95 | 0.95 | Future reward weight |
-| `epsilon_start` | 1.0 | 1.0 | Initial exploration |
-| `epsilon_end` | 0.01 | 0.05 | Final exploration |
-| `epsilon_decay` | 0.9995 | 0.9999 | Decay per episode |
-| `episodes` | 50,000 | 200,000 | Training episodes |
+| Parameter | Default Value | Description |
+|---|---|---|
+| `learning_rate` (α) | 0.2 | Step size for V-value updates |
+| `discount` (γ) | 0.9 | Future reward weight |
+| `epsilon_start` | 1.0 | Initial exploration rate |
+| `epsilon_end` | 0.01 | Final exploration rate |
+| `episodes` | 50,000 | Total training episodes (Tic-Tac-Toe) |
 
-### State Representation
-- Use `state_to_key()` (hash of board) as dict key
-- For Connect 4: may need to limit via symmetry or board reduction
+### State Representation & Hashing
+- **Afterstate Learning**: The agent learns $V(s_{after})$ where $s_{after}$ is the state resulting from an action. This significantly reduces the state space by mapping different $(s, a)$ pairs that lead to the same board to a single value.
+- **Symmetry Reduction**: For Tic-Tac-Toe, states are normalized by considering all 8 symmetries (4 rotations and 2 reflections). The lexicographically smallest flattened board is used as the canonical representation.
+- **Hashing**: The normalized board is converted to a **tuple** of integers to serve as a key in the tabular `v_table` dictionary.
 
-### Training Loop
-```
-for episode:
-    state = env.reset()
-    while not done:
-        action = ε-greedy from Q[state]
-        next_state, reward, done = env.step(action)
-        Q[s,a] += α * (r + γ * max(Q[s']) - Q[s,a])
-        state = next_state
-    decay ε
-```
+### Reward Signals
+- **Win**: $+1.0$
+- **Loss**: $-1.0$
+- **Draw**: $+0.5$ (Reward for reaching a terminal state without a winner)
+
+### Training & Exploration
+The agent employs a **linear epsilon decay** schedule. Exploration starts at $\epsilon=1.0$ and decays linearly to $\epsilon=0.01$ over the first 90% of training episodes ($45,000$ episodes). For the final 10%, exploration is fixed at the minimum rate.
+
+The V-value update follows the temporal difference (TD) rule:
+`V(s_last) = V(s_last) + α * (γ * V(s_current) - V(s_last))`
+For terminal transitions, the target is simply the immediate reward:
+`V(s_last) = V(s_last) + α * (reward - V(s_last))`
 
 ### Metrics to Track
 - Win rate over rolling window (e.g., last 1000 games)

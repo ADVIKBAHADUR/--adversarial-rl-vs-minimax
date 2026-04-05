@@ -1,0 +1,341 @@
+% ==============================================================================
+% ADVERSARIAL RL PROJECT: CODE APPENDICES
+% ==============================================================================
+
+\section{Appendix 1: Tic-Tac-Toe Minimax (Vanilla)}
+{\small
+\begin{lstlisting}[style=mypython]
+    def _minimax(self, state: np.ndarray, depth: int | None, is_maximising: bool) -> float:
+        """Vanilla minimax recursive search."""
+        key = (state.tobytes(), depth, is_maximising)
+        if key in self._cache:
+            return self._cache[key]
+            
+        self.stats["nodes_visited"] += 1
+
+        if depth is not None and depth <= 0:
+            res = self.evaluate(state)
+            self._cache[key] = res
+            return res
+
+        actions = np.where(self._game.get_valid_actions(state))[0]
+        if len(actions) == 0:
+            self._cache[key] = 0.0
+            return 0.0
+
+        best_score = -np.inf if is_maximising else np.inf
+        current_player = 1 if is_maximising else -1
+        
+        for action in actions:
+            new_state, done, winner = self._game.step(state, action, current_player)
+            if done:
+                score = self._terminal_score(winner)
+            else:
+                next_depth = depth - 1 if depth is not None else None
+                score = self._minimax(new_state, next_depth, not is_maximising)
+            
+            if is_maximising:
+                best_score = max(best_score, score)
+            else:
+                best_score = min(best_score, score)
+                
+        if len(self._cache) >= _MAX_CACHE_SIZE:
+            self._cache.clear()
+        self._cache[key] = best_score
+        return best_score
+\end{lstlisting}
+}
+
+\section{Appendix 2: Tic-Tac-Toe Minimax (Alpha-Beta Pruning)}
+{\small
+\begin{lstlisting}[style=mypython]
+    def _alphabeta(self, state: np.ndarray, depth: int | None,
+                   alpha: float, beta: float, is_maximising: bool) -> float:
+        """Alpha-beta pruning minimax search."""
+        key = (state.tobytes(), depth, is_maximising)
+        if key in self._cache:
+            entry = self._cache[key]
+            if entry['flag'] == 'EXACT':
+                return entry['value']
+            elif entry['flag'] == 'LOWERBOUND' and entry['value'] > alpha:
+                alpha = entry['value']
+            elif entry['flag'] == 'UPPERBOUND' and entry['value'] < beta:
+                beta = entry['value']
+            if alpha >= beta:
+                return entry['value']
+                
+        self.stats["nodes_visited"] += 1
+
+        if depth is not None and depth <= 0:
+            res = self.evaluate(state)
+            self._cache[key] = {'value': res, 'flag': 'EXACT'}
+            return res
+
+        actions = np.where(self._game.get_valid_actions(state))[0]
+        if len(actions) == 0:
+            self._cache[key] = {'value': 0.0, 'flag': 'EXACT'}
+            return 0.0
+
+        if self.cfg.move_ordering:
+            actions = self._order_moves(actions)
+
+        best_score = -np.inf if is_maximising else np.inf
+        current_player = 1 if is_maximising else -1
+        
+        orig_alpha = alpha
+        orig_beta = beta
+
+        for action in actions:
+            new_state, done, winner = self._game.step(state, action, current_player)
+            if done:
+                score = self._terminal_score(winner)
+            else:
+                next_depth = depth - 1 if depth is not None else None
+                score = self._alphabeta(new_state, next_depth, alpha, beta, not is_maximising)
+            
+            if is_maximising:
+                best_score = max(best_score, score)
+                alpha = max(alpha, score)
+                if beta <= alpha:
+                    break
+            else:
+                best_score = min(best_score, score)
+                beta = min(beta, score)
+                if beta <= alpha:
+                    break
+                    
+        if best_score <= orig_alpha:
+            flag = 'UPPERBOUND'
+        elif best_score >= orig_beta:
+            flag = 'LOWERBOUND'
+        else:
+            flag = 'EXACT'
+
+        if len(self._cache) >= _MAX_CACHE_SIZE:
+            self._cache.clear()
+        self._cache[key] = {'value': best_score, 'flag': flag}
+        return best_score
+\end{lstlisting}
+}
+
+\section{Appendix 3: Tic-Tac-Toe RL (Tabular Q-Learning)}
+{\small
+\begin{lstlisting}[style=mypython]
+    def train(self, game, opponent, episodes: int | None = None,
+              callback=None, start_ep: int = 0, total_eps: int | None = None) -> dict:
+        """Train via self-play against an opponent using afterstates."""
+        self._training = True
+        episodes = episodes or self.cfg.episodes
+        total_eps = total_eps or self.cfg.episodes
+        
+        metrics = {"p1_wins": 0, "p2_wins": 0, "draws": 0}
+        episodes_this_call = 0
+        
+        for i in range(episodes):
+            global_ep = start_ep + i
+            state = game.reset()
+            opponent.reset()
+            
+            # Agent side: 1 or -1
+            agent_side = 1 if global_ep % 2 == 0 else -1
+            
+            player = 1
+            last_afterstate_key = None
+            
+            while True:
+                # Get current perspective (1 = us, -1 = opponent)
+                perspective = state * agent_side
+                valid = game.get_valid_actions(state)
+                
+                if player == agent_side:
+                    # Agent's turn
+                    action = self.select_action(perspective, valid)
+                    
+                    # Transition to AFTERSTATE (result of our move)
+                    next_state, done, winner = game.step(state, action, player)
+                    afterstate_perspective = next_state * agent_side
+                    current_afterstate_key = game.state_to_key(afterstate_perspective)
+                    
+                    # Update transition: last_afterstate -> current_afterstate
+                    if last_afterstate_key is not None:
+                        # V(s_last) = V(s_last) + alpha * (gamma * V(s_current) - V(s_last))
+                        # Note: no reward here as it's a non-terminal transition
+                        target = self.cfg.discount * self.v_table.get(current_afterstate_key, 0.0)
+                        old_v = self.v_table.get(last_afterstate_key, 0.0)
+                        self.v_table[last_afterstate_key] = old_v + self.cfg.learning_rate * (target - old_v)
+
+                    last_afterstate_key = current_afterstate_key
+                    state = next_state
+                else:
+                    # Opponent's turn
+                    opp_perspective = state * -agent_side
+                    action = opponent.select_action(opp_perspective, valid)
+                    state, done, winner = game.step(state, action, player)
+
+                if done:
+                    # Terminal state reached
+                    if winner == agent_side:
+                        reward = 1.0  # Agent won
+                    elif winner == -agent_side:
+                        reward = -1.0 # Agent lost
+                    else:
+                        reward = 0.5  # Draw
+                        
+                    # Final update for the last afterstate reached by the agent
+                    if last_afterstate_key is not None:
+                        old_v = self.v_table.get(last_afterstate_key, 0.0)
+                        # Target is just the immediate reward (no future afterstate)
+                        self.v_table[last_afterstate_key] = old_v + self.cfg.learning_rate * (reward - old_v)
+                        
+                    if winner == agent_side: metrics["p1_wins"] += 1
+                    elif winner == -agent_side: metrics["p2_wins"] += 1
+                    else: metrics["draws"] += 1
+                    break
+                    
+                player *= -1
+
+            episodes_this_call += 1
+
+            # Simple linear epsilon decay
+            explore_duration = total_eps * 0.9
+            if global_ep < explore_duration:
+                self.epsilon = self.cfg.epsilon_start - (self.cfg.epsilon_start - self.cfg.epsilon_end) * (global_ep / explore_duration)
+            else:
+                self.epsilon = self.cfg.epsilon_end
+            
+            if callback:
+                callback(global_ep, metrics)
+                
+        self._training = False
+        self.episodes_trained += episodes_this_call
+        metrics["v_table_size"] = len(self.v_table)
+        return metrics
+\end{lstlisting}
+}
+
+\section{Appendix 4: Connect 4 Minimax (Vanilla)}
+{\small
+\begin{lstlisting}[style=mypython]
+    def _minimax(self, state: np.ndarray, depth: int | None, is_maximising: bool) -> float:
+        """Vanilla minimax recursive search (Architecture-agnostic logic)."""
+        key = (state.tobytes(), depth, is_maximising)
+        if key in self._cache:
+            return self._cache[key]
+            
+        self.stats["nodes_visited"] += 1
+
+        if depth is not None and depth <= 0:
+            res = self.evaluate(state) # Calls C4 Heuristics if depth limit reached
+            self._cache[key] = res
+            return res
+
+        actions = np.where(self._game.get_valid_actions(state))[0]
+        if len(actions) == 0:
+            self._cache[key] = 0.0
+            return 0.0
+
+        best_score = -np.inf if is_maximising else np.inf
+        current_player = 1 if is_maximising else -1
+        
+        for action in actions:
+            new_state, done, winner = self._game.step(state, action, current_player)
+            if done:
+                score = self._terminal_score(winner)
+            else:
+                next_depth = depth - 1 if depth is not None else None
+                score = self._minimax(new_state, next_depth, not is_maximising)
+            
+            if is_maximising:
+                best_score = max(best_score, score)
+            else:
+                best_score = min(best_score, score)
+                
+        if len(self._cache) >= _MAX_CACHE_SIZE:
+            self._cache.clear()
+        self._cache[key] = best_score
+        return best_score
+\end{lstlisting}
+}
+
+\section{Appendix 5: Connect 4 Alpha-Beta + Heuristic Evaluation}
+{\small
+\begin{lstlisting}[style=mypython]
+    def _alphabeta(self, state: np.ndarray, depth: int | None,
+                   alpha: float, beta: float, is_maximising: bool) -> float:
+        """Alpha-beta pruning with moves ordered centre-first."""
+        key = (state.tobytes(), depth, is_maximising)
+        if key in self._cache:
+            entry = self._cache[key]
+            # ... Truncated for brevity (logic same as Appendix 2) ...
+
+        if depth is not None and depth <= 0:
+            return self.evaluate(state) # Critical for Connect 4 depth-limited search
+
+        # ... Logic same as Appendix 2 ...
+        for action in actions:
+            # ... Search with Pruning ...
+            if beta <= alpha:
+                break
+        return best_score
+
+    def evaluate(self, state: np.ndarray) -> float:
+        """Fast vectorized heuristic evaluation for Connect 4.
+        
+        Uses numpy slicing to count 3-in-a-row windows instantly.
+        """
+        _, cols = state.shape
+        score = 0.0
+        
+        # 1. Center column preference
+        center = cols // 2
+        score += np.sum(state[:, center]) * 3
+        
+        # 2. Horizontal & Vertical 3-in-a-rows
+        h_windows = state[:, :-3] + state[:, 1:-2] + state[:, 2:-1] + state[:, 3:]
+        score += (np.sum(h_windows == 3) - np.sum(h_windows == -3)) * 10
+        
+        v_windows = state[:-3, :] + state[1:-2, :] + state[2:-1, :] + state[3:, :]
+        score += (np.sum(v_windows == 3) - np.sum(v_windows == -3)) * 10
+        
+        return float(score)
+\end{lstlisting}
+}
+
+\section{Appendix 6: Connect 4 RL (Deep Q-Network)}
+{\small
+\begin{lstlisting}[style=mypython]
+class QNetwork(nn.Module):
+    """Simple MLP Q-network approximated Q(s, a)."""
+    def __init__(self, input_size: int, output_size: int, hidden_sizes: list[int]):
+        super().__init__()
+        layers = []
+        prev = input_size
+        for h in hidden_sizes:
+            layers.extend([nn.Linear(prev, h), nn.ReLU()])
+            prev = h
+        layers.append(nn.Linear(prev, output_size))
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
+
+# ... inside DQNAgent class ...
+    def train(self, game, opponent, episodes: int | None = None, ...):
+        # ... sample batch from memory ...
+        s_tensor = torch.FloatTensor(s_batch).to(self.device).view(self.cfg.batch_size, -1)
+        a_tensor = torch.LongTensor(a_batch).to(self.device).unsqueeze(1)
+        
+        # Double-DQN target calculation
+        current_q = self.q_net(s_tensor).gather(1, a_tensor)
+        with torch.no_grad():
+            next_q_values = self.q_net(s_next_tensor)
+            best_actions = next_q_values.argmax(1).unsqueeze(1)
+            max_next_q = self.target_net(s_next_tensor).gather(1, best_actions)
+            target_q = r_tensor + (self.cfg.gamma * max_next_q * (1 - d_tensor))
+        
+        loss = loss_fn(current_q, target_q)
+        self.optimiser.zero_grad()
+        loss.backward()
+        self.optimiser.step()
+\end{lstlisting}
+}
